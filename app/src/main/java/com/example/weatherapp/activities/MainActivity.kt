@@ -5,6 +5,7 @@ import android.app.Dialog
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.location.Location
 import android.location.LocationManager
 import android.net.Uri
@@ -21,6 +22,7 @@ import com.example.weatherapp.R
 import com.example.weatherapp.constants.Constants
 import com.example.weatherapp.databinding.ActivityMainBinding
 import com.google.android.gms.location.*
+import com.google.gson.Gson
 import com.karumi.dexter.Dexter
 import com.karumi.dexter.MultiplePermissionsReport
 import com.karumi.dexter.PermissionToken
@@ -39,6 +41,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private lateinit var sharedPreferences: SharedPreferences
     private var proggressDialog: Dialog? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -47,6 +50,9 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+        sharedPreferences = getSharedPreferences(Constants.PREFERENCE_NAME, Context.MODE_PRIVATE)
+
+        setupUI()
 
         if(!isLocationEnabled()){
             Toast.makeText(this, "Please turn on your location provider", Toast.LENGTH_SHORT).show()
@@ -143,7 +149,12 @@ class MainActivity : AppCompatActivity() {
 
                     if(response!!.isSuccess){
                         val weatherList = response.body()
-                        setupUI(weatherList)
+                        val weatherResponseJsonString = Gson().toJson(weatherList)
+                        val editor = sharedPreferences.edit()
+                        editor.putString(Constants.WEATHER_RESPONSE_DATA, weatherResponseJsonString)
+                        editor.apply()
+
+                        setupUI()
                     }
                     else{
                         val rc = response.code()
@@ -208,41 +219,49 @@ class MainActivity : AppCompatActivity() {
     }
 
     @SuppressLint("SetTextI18n")
-    private fun setupUI(weatherList: WeatherResponse) {
+    private fun setupUI() {
 
-        for (z in weatherList.weather.indices) {
+        val weatherResponseJsonString = sharedPreferences.getString(Constants.WEATHER_RESPONSE_DATA, "")
 
-            binding.tvMain.text = weatherList.weather[z].main
-            binding.tvMainDescription.text = weatherList.weather[z].description
-            binding.tvTemp.text = weatherList.main.temp.toString() + getUnit(application.resources.configuration.locales.toString())
-            binding.tvHumidity.text = weatherList.main.humidity.toString() + " per cent"
-            binding.tvMin.text = weatherList.main.temp_min.toString() + " min"
-            binding.tvMax.text = weatherList.main.temp_max.toString() + " max"
-            binding.tvSpeed.text = weatherList.wind.speed.toString()
-            binding.tvName.text = weatherList.name
-            binding.tvCountry.text = weatherList.sys.country
-            binding.tvSunriseTime.text = unixTime(weatherList.sys.sunrise)
-            binding.tvSunsetTime.text = unixTime(weatherList.sys.sunset)
+        if(!weatherResponseJsonString.isNullOrEmpty()){
+            val weatherList = Gson().fromJson(weatherResponseJsonString, WeatherResponse::class.java)
 
-            // Here we update the main icon
-            when (weatherList.weather[z].icon) {
-                "01d" -> binding.ivMain.setImageResource(R.drawable.sunny)
-                "02d" -> binding.ivMain.setImageResource(R.drawable.cloud)
-                "03d" -> binding.ivMain.setImageResource(R.drawable.cloud)
-                "04d" -> binding.ivMain.setImageResource(R.drawable.cloud)
-                "04n" -> binding.ivMain.setImageResource(R.drawable.cloud)
-                "10d" -> binding.ivMain.setImageResource(R.drawable.rain)
-                "11d" -> binding.ivMain.setImageResource(R.drawable.storm)
-                "13d" -> binding.ivMain.setImageResource(R.drawable.snowflake)
-                "01n" -> binding.ivMain.setImageResource(R.drawable.cloud)
-                "02n" -> binding.ivMain.setImageResource(R.drawable.cloud)
-                "03n" -> binding.ivMain.setImageResource(R.drawable.cloud)
-                "10n" -> binding.ivMain.setImageResource(R.drawable.cloud)
-                "11n" -> binding.ivMain.setImageResource(R.drawable.rain)
-                "13n" -> binding.ivMain.setImageResource(R.drawable.snowflake)
-                "50d" -> binding.ivMain.setImageResource(R.drawable.mist)
+            for (z in weatherList.weather.indices) {
+
+                binding.tvMain.text = weatherList.weather[z].main
+                binding.tvMainDescription.text = weatherList.weather[z].description
+                binding.tvTemp.text = weatherList.main.temp.toString() + getUnit(application.resources.configuration.locales.toString())
+                binding.tvHumidity.text = weatherList.main.humidity.toString() + " per cent"
+                binding.tvMin.text = weatherList.main.temp_min.toString() + " min"
+                binding.tvMax.text = weatherList.main.temp_max.toString() + " max"
+                binding.tvSpeed.text = weatherList.wind.speed.toString()
+                binding.tvName.text = weatherList.name
+                binding.tvCountry.text = weatherList.sys.country
+                binding.tvSunriseTime.text = unixTime(weatherList.sys.sunrise)
+                binding.tvSunsetTime.text = unixTime(weatherList.sys.sunset)
+
+                // Here we update the main icon
+                when (weatherList.weather[z].icon) {
+                    "01d" -> binding.ivMain.setImageResource(R.drawable.sunny)
+                    "02d" -> binding.ivMain.setImageResource(R.drawable.cloud)
+                    "03d" -> binding.ivMain.setImageResource(R.drawable.cloud)
+                    "04d" -> binding.ivMain.setImageResource(R.drawable.cloud)
+                    "04n" -> binding.ivMain.setImageResource(R.drawable.cloud)
+                    "10d" -> binding.ivMain.setImageResource(R.drawable.rain)
+                    "11d" -> binding.ivMain.setImageResource(R.drawable.storm)
+                    "13d" -> binding.ivMain.setImageResource(R.drawable.snowflake)
+                    "01n" -> binding.ivMain.setImageResource(R.drawable.cloud)
+                    "02n" -> binding.ivMain.setImageResource(R.drawable.cloud)
+                    "03n" -> binding.ivMain.setImageResource(R.drawable.cloud)
+                    "10n" -> binding.ivMain.setImageResource(R.drawable.cloud)
+                    "11n" -> binding.ivMain.setImageResource(R.drawable.rain)
+                    "13n" -> binding.ivMain.setImageResource(R.drawable.snowflake)
+                    "50d" -> binding.ivMain.setImageResource(R.drawable.mist)
+                }
             }
         }
+
+
     }
 
     /**
